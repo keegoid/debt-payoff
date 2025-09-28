@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debt Paydown Strategy Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        /* Style for number inputs */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        /* Enforce table layout */
+        .force-layout {
+            table-layout: fixed;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-300 antialiased">
+
+    <div id="app" class="container mx-auto p-4 md:p-6 lg:p-8 max-w-7xl">
+
+        <!-- Header -->
+        <header class="mb-6 md:mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Debt Paydown Strategy Dashboard</h1>
+            <p class="mt-2 text-slate-400">Track your debts and find the most effective payoff plan with realistic rollover calculations.</p>
+        </header>
+
+        <!-- Control Panel & Summary -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 md:mb-8">
+            
+            <!-- Control Panel -->
+            <div class="bg-slate-800 p-6 rounded-2xl shadow-lg lg:col-span-1">
+                <h2 class="text-xl font-bold text-white mb-4">Control Panel</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="payoffStrategy" class="block text-sm font-medium text-slate-400 mb-1">Payoff Strategy</label>
+                        <select id="payoffStrategy" class="w-full bg-slate-700 text-white rounded-lg border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            <option>Avalanche (Highest APR)</option>
+                            <option>Snowball (Lowest Balance)</option>
+                            <option>Highest Payment (Cash Flow)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="extraMonthlyBudget" class="block text-sm font-medium text-slate-400 mb-1">Extra Monthly Budget</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">$</span>
+                            <input type="number" id="extraMonthlyBudget" value="200" class="w-full pl-7 bg-slate-700 text-white rounded-lg border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., 200">
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                         <button id="resetDataBtn" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg transition shadow-md hover:shadow-lg text-sm">
+                            Reset All Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 lg:col-span-2">
+                <div class="bg-slate-800 p-4 rounded-2xl shadow-lg flex flex-col justify-center text-center">
+                    <p class="text-sm text-slate-400">Total Debt</p>
+                    <p id="summaryTotalDebt" class="text-2xl font-bold text-white"></p>
+                </div>
+                <div class="bg-slate-800 p-4 rounded-2xl shadow-lg flex flex-col justify-center text-center">
+                    <p class="text-sm text-slate-400">Total Monthly Outlay</p>
+                    <p id="summaryTotalMonthly" class="text-2xl font-bold text-green-400"></p>
+                </div>
+                <div class="bg-slate-800 p-4 rounded-2xl shadow-lg flex flex-col justify-center text-center">
+                    <p class="text-sm text-slate-400">Est. Total Interest</p>
+                    <p id="summaryTotalInterest" class="text-2xl font-bold text-red-400"></p>
+                </div>
+                <div class="bg-slate-800 p-4 rounded-2xl shadow-lg flex flex-col justify-center text-center">
+                    <p class="text-sm text-slate-400">Debt-Free Date</p>
+                    <p id="summaryDebtFreeDate" class="text-2xl font-bold text-blue-400"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debts Table -->
+        <div class="bg-slate-800 rounded-2xl shadow-lg overflow-x-auto">
+            <table class="min-w-full text-left force-layout">
+                <thead class="bg-slate-700/50">
+                    <tr>
+                        <!-- *** CHANGE IS HERE: Removed Extra Pmt and Total Pmt columns for clarity *** -->
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 240px;">Debt Name</th>
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 160px;">Total Balance</th>
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 120px;">APR (%)</th>
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 140px;">Min. Pmt</th>
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider text-center" style="width: 100px;">Priority</th>
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 160px;">Payoff (Months)</th>
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 160px;">Total Interest</th>
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 140px;">Payoff Date</th>
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider text-center" style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="debtTableBody" class="divide-y divide-slate-700">
+                    <!-- Rows will be dynamically inserted here -->
+                </tbody>
+            </table>
+            <div class="p-4 bg-slate-800 border-t border-slate-700">
+                <button id="addDebtBtn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition shadow-md hover:shadow-lg">
+                    + Add New Debt
+                </button>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const getEl = (id) => document.getElementById(id);
+
+            // DOM Elements
+            const payoffStrategyEl = getEl('payoffStrategy');
+            const extraMonthlyBudgetEl = getEl('extraMonthlyBudget');
+            const debtTableBodyEl = getEl('debtTableBody');
+            const addDebtBtn = getEl('addDebtBtn');
+            const resetDataBtn = getEl('resetDataBtn');
+
+            // Summary Elements
+            const summaryTotalDebtEl = getEl('summaryTotalDebt');
+            const summaryTotalMonthlyEl = getEl('summaryTotalMonthly');
+            const summaryTotalInterestEl = getEl('summaryTotalInterest');
+            const summaryDebtFreeDateEl = getEl('summaryDebtFreeDate');
+
+            // --- STATE MANAGEMENT with localStorage ---
+            let debts = [];
+            let nextId = 1;
+
+            function loadState() {
+                const savedDebts = localStorage.getItem('debtDashboardDebts');
+                const savedBudget = localStorage.getItem('debtDashboardBudget');
+                const savedStrategy = localStorage.getItem('debtDashboardStrategy');
+
+                if (savedDebts) {
+                    debts = JSON.parse(savedDebts);
+                    if (debts.length > 0) {
+                       nextId = Math.max(...debts.map(d => d.id)) + 1;
+                    }
+                } else {
+                    debts = [
+                        { id: 1, name: 'Credit Card', balance: 4500, apr: 21.9, minPmt: 150 },
+                        { id: 2, name: 'Car Loan', balance: 12000, apr: 5.5, minPmt: 350 },
+                        { id: 3, name: 'Student Loan', balance: 25000, apr: 4.2, minPmt: 200 },
+                    ];
+                    nextId = 4;
+                }
+                
+                extraMonthlyBudgetEl.value = savedBudget || '200';
+                payoffStrategyEl.value = savedStrategy || 'Avalanche (Highest APR)';
+            }
+
+            function saveState() {
+                localStorage.setItem('debtDashboardDebts', JSON.stringify(debts));
+                localStorage.setItem('debtDashboardBudget', extraMonthlyBudgetEl.value);
+                localStorage.setItem('debtDashboardStrategy', payoffStrategyEl.value);
+            }
+            
+            // --- FORMATTING HELPERS ---
+            const formatCurrency = (value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            const formatDate = (date) => date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+
+            // --- CORE CALCULATION LOGIC ---
+            function runPayoffSimulation(debtsToSimulate, extraBudget) {
+                let simDebts = debtsToSimulate.map(d => ({
+                    ...d,
+                    currentBalance: d.balance,
+                    paidOff: false,
+                    totalInterestPaid: 0,
+                    monthsToPayoff: 0,
+                }));
+
+                let months = 0;
+                const maxMonths = 1200; // 100 year limit
+
+                while (simDebts.some(d => !d.paidOff) && months < maxMonths) {
+                    months++;
+
+                    const cumulativeFreedPayment = simDebts
+                        .filter(d => d.paidOff)
+                        .reduce((sum, d) => sum + d.minPmt, 0);
+
+                    const targetDebt = simDebts.find(d => !d.paidOff);
+                    if (!targetDebt) break;
+
+                    let totalInterestThisMonth = 0;
+                    let totalPaymentsThisMonth = 0;
+
+                    for (const debt of simDebts) {
+                        if (debt.paidOff) continue;
+
+                        const monthlyInterest = (debt.currentBalance * (debt.apr / 100)) / 12;
+                        debt.totalInterestPaid += monthlyInterest;
+                        totalInterestThisMonth += monthlyInterest;
+
+                        let payment = debt.minPmt;
+                        if (debt.id === targetDebt.id) {
+                            payment += extraBudget + cumulativeFreedPayment;
+                        }
+                        totalPaymentsThisMonth += payment;
+
+                        debt.currentBalance -= (payment - monthlyInterest);
+                    }
+                    
+                    if (totalPaymentsThisMonth < totalInterestThisMonth) {
+                        simDebts.forEach(d => { if (!d.paidOff) d.monthsToPayoff = Infinity });
+                        return simDebts;
+                    }
+
+                    for (const debt of simDebts) {
+                        if (!debt.paidOff && debt.currentBalance <= 0) {
+                            debt.paidOff = true;
+                            debt.monthsToPayoff = months;
+                            debt.currentBalance = 0;
+                        }
+                    }
+                }
+
+                if (months >= maxMonths && simDebts.some(d => !d.paidOff)) {
+                    simDebts.forEach(d => { if (!d.paidOff) d.monthsToPayoff = Infinity });
+                }
+
+                return simDebts;
+            }
+
+            function calculateAndRender() {
+                const strategy = payoffStrategyEl.value;
+                const extraBudget = parseFloat(extraMonthlyBudgetEl.value) || 0;
+                
+                let rankedDebts = [...debts];
+                if (strategy === 'Avalanche (Highest APR)') {
+                    rankedDebts.sort((a, b) => b.apr - a.apr || a.balance - b.balance);
+                } else if (strategy === 'Snowball (Lowest Balance)') {
+                    rankedDebts.sort((a, b) => a.balance - b.balance || b.apr - a.apr);
+                } else if (strategy === 'Highest Payment (Cash Flow)') {
+                    rankedDebts.sort((a, b) => b.minPmt - a.minPmt || b.apr - a.apr);
+                }
+                
+                debts.forEach(d => {
+                    d.priority = rankedDebts.findIndex(rd => rd.id === d.id) + 1;
+                });
+                
+                const simulationResults = runPayoffSimulation(rankedDebts, extraBudget);
+
+                const calculatedDebts = debts.map(originalDebt => {
+                    const result = simulationResults.find(r => r.id === originalDebt.id);
+                    const isInfinite = result ? result.monthsToPayoff === Infinity : false;
+
+                    let payoffDate = null;
+                    if (result && !isInfinite && result.monthsToPayoff > 0) {
+                        payoffDate = new Date();
+                        payoffDate.setMonth(payoffDate.getMonth() + result.monthsToPayoff);
+                    }
+                    
+                    return {
+                        ...originalDebt,
+                        months: result ? result.monthsToPayoff : 0,
+                        totalInterest: result ? result.totalInterestPaid : 0,
+                        payoffDate: payoffDate,
+                        isInfinite: isInfinite,
+                    };
+                });
+
+                renderTable(calculatedDebts);
+                updateSummary(calculatedDebts);
+                saveState(); 
+            }
+
+            // --- RENDERING LOGIC ---
+            function renderTable(calculatedDebts) {
+                debtTableBodyEl.innerHTML = '';
+                if (calculatedDebts.length === 0) {
+                    debtTableBodyEl.innerHTML = `<tr><td colspan="9" class="text-center p-8 text-slate-400">No debts added yet. Click "+ Add New Debt" to start.</td></tr>`;
+                    return;
+                }
+                
+                calculatedDebts.sort((a,b) => a.priority - b.priority).forEach(debt => {
+                    const row = document.createElement('tr');
+                    row.className = debt.priority === 1 ? 'bg-slate-700/70' : 'hover:bg-slate-700/50 transition-colors';
+                    row.innerHTML = `
+                        <td class="p-4"><input type="text" value="${debt.name}" data-id="${debt.id}" data-field="name" class="w-full bg-transparent focus:bg-slate-700 rounded p-1 outline-none focus:ring-1 focus:ring-blue-500"></td>
+                        <td class="p-4"><input type="number" value="${debt.balance}" data-id="${debt.id}" data-field="balance" class="w-full bg-transparent focus:bg-slate-700 rounded p-1 outline-none focus:ring-1 focus:ring-blue-500"></td>
+                        <td class="p-4"><input type="number" step="0.1" value="${debt.apr}" data-id="${debt.id}" data-field="apr" class="w-full bg-transparent focus:bg-slate-700 rounded p-1 outline-none focus:ring-1 focus:ring-blue-500"></td>
+                        <td class="p-4"><input type="number" value="${debt.minPmt}" data-id="${debt.id}" data-field="minPmt" class="w-full bg-transparent focus:bg-slate-700 rounded p-1 outline-none focus:ring-1 focus:ring-blue-500"></td>
+                        <td class="p-4 text-center"><span class="bg-blue-600 text-white font-bold text-lg rounded-full h-8 w-8 flex items-center justify-center shadow-lg mx-auto">${debt.priority}</span></td>
+                        <td class="p-4 text-center">${debt.isInfinite ? 'Never' : debt.months}</td>
+                        <td class="p-4 text-red-400">${debt.isInfinite ? 'N/A' : formatCurrency(debt.totalInterest)}</td>
+                        <td class="p-4">${debt.payoffDate ? formatDate(debt.payoffDate) : 'N/A'}</td>
+                        <td class="p-4 text-center">
+                            <button data-id="${debt.id}" class="delete-btn text-slate-500 hover:text-red-500 transition-colors p-1 rounded-full mx-auto block">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            </button>
+                        </td>
+                    `;
+                    debtTableBodyEl.appendChild(row);
+                });
+            }
+
+            function updateSummary(calculatedDebts) {
+                const totalDebt = debts.reduce((sum, d) => sum + d.balance, 0);
+                const totalMinMonthly = debts.reduce((sum, d) => sum + d.minPmt, 0);
+                const extraBudget = parseFloat(extraMonthlyBudgetEl.value) || 0;
+                const totalMonthly = totalMinMonthly + extraBudget;
+                const totalInterest = calculatedDebts.reduce((sum, d) => sum + (isFinite(d.totalInterest) ? d.totalInterest : 0), 0);
+                
+                let latestDate = new Date(0);
+                calculatedDebts.forEach(d => {
+                    if (d.payoffDate && d.payoffDate > latestDate) {
+                        latestDate = d.payoffDate;
+                    }
+                });
+
+                summaryTotalDebtEl.textContent = formatCurrency(totalDebt);
+                summaryTotalMonthlyEl.textContent = formatCurrency(totalMonthly);
+                summaryTotalInterestEl.textContent = formatCurrency(totalInterest);
+                summaryDebtFreeDateEl.textContent = totalDebt > 0 && isFinite(latestDate) && latestDate > new Date(0) ? formatDate(latestDate) : 'N/A';
+            }
+
+            // --- EVENT HANDLERS ---
+            function handleInputChange(e) {
+                if (e.target.dataset.id) {
+                    const id = parseInt(e.target.dataset.id, 10);
+                    const field = e.target.dataset.field;
+                    const value = e.target.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value;
+                    
+                    const debtIndex = debts.findIndex(d => d.id === id);
+                    if (debtIndex > -1) {
+                        debts[debtIndex][field] = value;
+                    }
+                }
+                calculateAndRender();
+            }
+
+            function addDebt() {
+                debts.push({ id: nextId++, name: 'New Debt', balance: 0, apr: 0, minPmt: 0 });
+                calculateAndRender();
+            }
+
+            function deleteDebt(e) {
+                const deleteButton = e.target.closest('.delete-btn');
+                if (deleteButton) {
+                    const id = parseInt(deleteButton.dataset.id, 10);
+                    debts = debts.filter(d => d.id !== id);
+                    calculateAndRender();
+                }
+            }
+            
+            function resetData() {
+                localStorage.removeItem('debtDashboardDebts');
+                localStorage.removeItem('debtDashboardBudget');
+                localStorage.removeItem('debtDashboardStrategy');
+                window.location.reload();
+            }
+
+            // --- INITIALIZATION ---
+            payoffStrategyEl.addEventListener('change', calculateAndRender);
+            extraMonthlyBudgetEl.addEventListener('input', calculateAndRender);
+            addDebtBtn.addEventListener('click', addDebt);
+            debtTableBodyEl.addEventListener('change', handleInputChange);
+            debtTableBodyEl.addEventListener('click', deleteDebt);
+            resetDataBtn.addEventListener('click', resetData);
+
+            loadState();
+            calculateAndRender(); 
+        });
+    </script>
+</body>
+</html>
+
+
