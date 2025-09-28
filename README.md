@@ -1,6 +1,6 @@
 # Debt Payoff
 
-![Debt Paydown Dashboard Screenshot](https://storage.googleapis.com/project-ava-prod-central1/hosted/4e00469b76c8a77d853e5e40638efc6a.png)
+![Debt Payoff Screenshot](./Screenshot_20250927-180044.png)
 
 ## What It Is
 
