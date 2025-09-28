@@ -103,7 +103,7 @@
         </div>
 
         <!-- Debts Table -->
-        <div class="bg-slate-800 rounded-2xl shadow-lg overflow-x-auto">
+        <div class="bg-slate-800 rounded-2xl shadow-lg overflow-x-auto mb-6 md:mb-8">
             <table class="min-w-full text-left force-layout">
                 <thead class="bg-slate-700/50">
                     <tr>
@@ -115,8 +115,7 @@
                         <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 160px;">Payoff (Months)</th>
                         <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 160px;">Total Interest</th>
                         <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 140px;">Payoff Date</th>
-                        <!-- *** CHANGE IS HERE: Added Notes column *** -->
-                        <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 200px;">Notes</th>
+                        <th class="p-4 text-sm font-semibold text-white tracking-wider" style="width: 280px;">Notes</th>
                         <th class="p-4 text-sm font-semibold text-white tracking-wider text-center" style="width: 100px;">Actions</th>
                     </tr>
                 </thead>
@@ -130,6 +129,15 @@
                 </button>
             </div>
         </div>
+
+        <!-- Strategy Notes -->
+        <div class="bg-slate-800 p-4 rounded-2xl shadow-lg">
+            <h2 class="text-xl font-bold text-white mb-3">Strategy Notes</h2>
+            <div>
+                <label for="strategyNotes" class="sr-only">Strategy Notes</label>
+                <textarea id="strategyNotes" rows="4" class="w-full bg-slate-700 text-slate-300 rounded-lg border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Enter your overall payoff strategy, goals, or reminders here..."></textarea>
+            </div>
+        </div>
         
     </div>
 
@@ -140,6 +148,7 @@
             // DOM Elements
             const payoffStrategyEl = getEl('payoffStrategy');
             const extraMonthlyBudgetEl = getEl('extraMonthlyBudget');
+            const strategyNotesEl = getEl('strategyNotes');
             const debtTableBodyEl = getEl('debtTableBody');
             const addDebtBtn = getEl('addDebtBtn');
             const resetDataBtn = getEl('resetDataBtn');
@@ -158,6 +167,7 @@
                 const savedDebts = localStorage.getItem('debtDashboardDebts');
                 const savedBudget = localStorage.getItem('debtDashboardBudget');
                 const savedStrategy = localStorage.getItem('debtDashboardStrategy');
+                const savedStrategyNotes = localStorage.getItem('debtDashboardStrategyNotes');
 
                 if (savedDebts) {
                     debts = JSON.parse(savedDebts);
@@ -165,7 +175,6 @@
                        nextId = Math.max(...debts.map(d => d.id)) + 1;
                     }
                 } else {
-                    // *** CHANGE IS HERE: Added notes property to default data ***
                     debts = [
                         { id: 1, name: 'Credit Card', balance: 4500, apr: 21.9, minPmt: 150, notes: '' },
                         { id: 2, name: 'Car Loan', balance: 12000, apr: 5.5, minPmt: 350, notes: 'Acct # 12345' },
@@ -176,12 +185,14 @@
                 
                 extraMonthlyBudgetEl.value = savedBudget || '200';
                 payoffStrategyEl.value = savedStrategy || 'Avalanche (Highest APR)';
+                strategyNotesEl.value = savedStrategyNotes || '';
             }
 
             function saveState() {
                 localStorage.setItem('debtDashboardDebts', JSON.stringify(debts));
                 localStorage.setItem('debtDashboardBudget', extraMonthlyBudgetEl.value);
                 localStorage.setItem('debtDashboardStrategy', payoffStrategyEl.value);
+                localStorage.setItem('debtDashboardStrategyNotes', strategyNotesEl.value);
             }
             
             // --- FORMATTING HELPERS ---
@@ -305,7 +316,6 @@
                 calculatedDebts.sort((a,b) => a.priority - b.priority).forEach(debt => {
                     const row = document.createElement('tr');
                     row.className = debt.priority === 1 ? 'bg-slate-700/70' : 'hover:bg-slate-700/50 transition-colors';
-                    // *** CHANGE IS HERE: Added notes text box to the row ***
                     row.innerHTML = `
                         <td class="p-4"><input type="text" value="${debt.name}" data-id="${debt.id}" data-field="name" class="w-full bg-transparent focus:bg-slate-700 rounded p-1 outline-none focus:ring-1 focus:ring-blue-500"></td>
                         <td class="p-4"><input type="number" value="${debt.balance}" data-id="${debt.id}" data-field="balance" class="w-full bg-transparent focus:bg-slate-700 rounded p-1 outline-none focus:ring-1 focus:ring-blue-500"></td>
@@ -351,7 +361,6 @@
                 if (e.target.dataset.id) {
                     const id = parseInt(e.target.dataset.id, 10);
                     const field = e.target.dataset.field;
-                    // This now handles both text and number fields correctly
                     const value = e.target.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value;
                     
                     const debtIndex = debts.findIndex(d => d.id === id);
@@ -362,7 +371,6 @@
                 calculateAndRender();
             }
             
-            // *** CHANGE IS HERE: Added notes property when creating a new debt ***
             function addDebt() {
                 debts.push({ id: nextId++, name: 'New Debt', balance: 0, apr: 0, minPmt: 0, notes: '' });
                 calculateAndRender();
@@ -381,12 +389,14 @@
                 localStorage.removeItem('debtDashboardDebts');
                 localStorage.removeItem('debtDashboardBudget');
                 localStorage.removeItem('debtDashboardStrategy');
+                localStorage.removeItem('debtDashboardStrategyNotes');
                 window.location.reload();
             }
 
             // --- INITIALIZATION ---
             payoffStrategyEl.addEventListener('change', calculateAndRender);
             extraMonthlyBudgetEl.addEventListener('input', calculateAndRender);
+            strategyNotesEl.addEventListener('input', saveState);
             addDebtBtn.addEventListener('click', addDebt);
             debtTableBodyEl.addEventListener('change', handleInputChange);
             debtTableBodyEl.addEventListener('click', deleteDebt);
